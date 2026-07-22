@@ -16,6 +16,8 @@
 
 The application allows users to create Lost or Found item reports, browse community posts, search for items, filter results, update post details, and mark items as returned once they are successfully recovered.
 
+To enhance the user experience, the application includes a **lightweight, optional AI-assisted helper suite** powered by the **Google Gemini API**, helping users categorize reports, generate descriptive summaries, and validate report quality before submission.
+
 The project is designed using **Layered Architecture** following industry-standard Spring Boot development practices while keeping the implementation simple, clean, and easy to understand for beginners.
 
 ---
@@ -41,6 +43,7 @@ Most communities still rely on noisy WhatsApp groups or physical notices to repo
 - **View Detailed Information** of reported items
 - **Edit & Delete Posts**
 - **Mark Items as Returned** once reunited
+- **Optional AI Assistance**: Get category suggestions, generate detailed descriptions, and review content quality.
 
 ---
 
@@ -67,18 +70,23 @@ Users can submit reports for Lost or Found items including:
 - Contact Name & 10-digit Phone Number
 - Optional Image URL
 
-### 3. Search & Filter Bar
+### 3. ✨ AI-Assisted Report Helpers (Optional)
+- **AI Category Suggestion**: Analyzes the item title (e.g. *"Samsung Galaxy S23"*) and suggests the matching category (*"ELECTRONICS"*), which the user can optionally apply.
+- **AI Description Generator**: Generates a professional, concise lost or found description based on the title, category, and location, which is fully editable before submission.
+- **AI Content Validation**: Assesses the description for realism and completeness, flagging vague inputs (e.g. *"lost phone"*) or unrealistic reports (e.g. *"lost helicopter"*) with helpful suggestions without blocking submission.
+
+### 4. Search & Filter Bar
 - Search items using title, description, or location keywords.
 - Filter posts by: Type (Lost/Found), Category, Status, and Location.
 
-### 4. Item Details View
+### 5. Item Details View
 Displays complete information:
 - Item image thumbnail
 - Description & Category
 - Date & Location
 - Poster Contact Details with a direct **Call** link
 
-### 5. My Posts Management Page
+### 6. My Posts Management Page
 Users can view and manage their reported items:
 - Edit post details
 - Delete posts
@@ -114,21 +122,27 @@ The project follows a strict 3-Tier Layered Architecture:
 User ➔ React Components ➔ Axios ➔ REST API ➔ Controller ➔ Service ➔ Repository ➔ Hibernate ➔ MySQL ➔ Repository ➔ Service ➔ Controller ➔ JSON Response ➔ React UI
 ```
 
+### Optional AI Request Flow
+Note that AI acts strictly as an assistive client helper and is not part of the database CRUD loop:
+```
+React ➔ Axios ➔ Spring Boot Controller ➔ Service ➔ Google Gemini API ➔ Helper Response ➔ React (Editable Input)
+```
+
 ---
 
 ## 📂 Backend Architecture Design
 
-### 1. Controller Layer (`ItemController.java`)
-- **Responsibility**: Receiving HTTP Requests, validating the request payload, and returning standard JSON API responses.
+### 1. Controller Layer (`ItemController.java`, `AiController.java`)
+- **Responsibility**: Receiving HTTP Requests, validating request payloads, and returning structured JSON API responses.
 
-### 2. Service Layer (`ItemService` & `ItemServiceImpl`)
-- **Responsibility**: Encapsulating core business logic, managing transaction boundaries (`@Transactional`), and coordinating database calls.
+### 2. Service Layer (`ItemService`, `AiService`)
+- **Responsibility**: Encapsulating business logic, invoking external APIs via `RestTemplate`, managing transactions, and database communication.
 
 ### 3. Repository Layer (`ItemRepository.java`)
 - **Responsibility**: Database communication and executing derived queries.
 
 ### 4. DTO Pattern (Data Transfer Object)
-- Used to transfer data cleanly between the client and server without exposing database entities directly to the frontend.
+- Used to transfer data cleanly between client and server without exposing database entities directly to the frontend.
 
 ### 5. Mapper Layer (`ItemMapper.java`)
 - Handles type-safe conversions between DTOs and database Entities (`toEntity` / `toResponseDTO`).
@@ -154,18 +168,26 @@ FindIt/
 │       │   │       └── findit/
 │       │   │           ├── FindItApplication.java        # Application Main Entry Point
 │       │   │           ├── config/
+│       │   │           │   ├── RestTemplateConfig.java   # RestTemplate Configuration
 │       │   │           │   └── WebConfig.java            # Centralized CORS Configuration (WebMvcConfigurer)
 │       │   │           ├── controller/
-│       │   │           │   └── ItemController.java       # REST Controller
+│       │   │           │   ├── AiController.java         # AI Assistant Controller
+│       │   │           │   └── ItemController.java       # CRUD REST Controller
 │       │   │           ├── dto/
 │       │   │           │   ├── ApiResponse.java          # Unified REST Envelope <T>
+│       │   │           │   ├── AiRequestDTO.java
+│       │   │           │   ├── AiResponseDTO.java
+│       │   │           │   ├── AiCategoryRequestDTO.java
+│       │   │           │   ├── AiCategoryResponseDTO.java
+│       │   │           │   ├── AiValidationRequestDTO.java
+│       │   │           │   ├── AiValidationResponseDTO.java
 │       │   │           │   ├── ItemRequestDTO.java       # Bean Validation DTO
 │       │   │           │   └── ItemResponseDTO.java      # Output JSON Payload
 │       │   │           ├── entity/
-│       │   │           │   ├── Category.java             # Enum: MOBILE, WALLET, KEYS, DOCUMENT, ID_CARD, BAG, ELECTRONICS, OTHER
+│       │   │           │   ├── Category.java             # Category Enum
 │       │   │           │   ├── Item.java                 # JPA Entity
-│       │   │           │   ├── ItemStatus.java           # Enum: ACTIVE, RETURNED
-│       │   │           │   └── ItemType.java             # Enum: LOST, FOUND
+│       │   │           │   ├── ItemStatus.java           # Status Enum
+│       │   │           │   └── ItemType.java             # Type Enum
 │       │   │           ├── exception/
 │       │   │           │   ├── ErrorDetails.java
 │       │   │           │   ├── GlobalExceptionHandler.java# @RestControllerAdvice
@@ -175,9 +197,11 @@ FindIt/
 │       │   │           ├── repository/
 │       │   │           │   └── ItemRepository.java       # JpaRepository<Item, Long>
 │       │   │           └── service/
-│       │   │               ├── ItemService.java          # Service Interface
+│       │   │               ├── AiService.java            # AI Service Interface
+│       │   │               ├── ItemService.java          # Item Service Interface
 │       │   │               └── impl/
-│       │   │                   └── ItemServiceImpl.java  # @Service & @Transactional Implementation
+│       │   │                   ├── AiServiceImpl.java    # AI Service Implementation (Gemini client)
+│       │   │                   └── ItemServiceImpl.java  # Item Service Implementation
 │       │   └── resources/
 │       │       └── application.properties                # MySQL connection properties
 │       └── test/
@@ -185,7 +209,8 @@ FindIt/
 │               └── com/
 │                   └── findit/
 │                       └── service/
-│                           └── ItemServiceTest.java      # JUnit 5 & Mockito service unit tests
+│                           ├── AiServiceTest.java        # AI Service Unit Tests
+│                           └── ItemServiceTest.java      # Item Service Unit Tests
 │
 └── frontend/                             # React SPA
     ├── package.json
@@ -225,6 +250,7 @@ FindIt/
 - **Database System**: MySQL (Server Version `8.0` / `8.4` compatible)
 - **Dependency Management**: Maven (Build Compiler Version `3.9.x`)
 - **Logging Auditing**: SLF4J (using Lombok `@Slf4j` facade generator)
+- **AI Integration**: Google Gemini API (via `RestTemplate`)
 
 ### Testing Stack
 - **Testing Framework**: JUnit `5.10.2`
@@ -284,6 +310,9 @@ Input payloads are strictly validated on the DTO layer using Jakarta Validation 
 | `PUT` | `/api/items/{id}` | Replace post details | `ItemRequestDTO` | `200 OK` |
 | `PATCH` | `/api/items/{id}/status` | Update item status (e.g. Returned) | None (Query parameter) | `200 OK` |
 | `DELETE`| `/api/items/{id}` | Remove post | None | `204 No Content` |
+| `POST` | `/api/ai/generate-description` | AI Description Generator | `AiRequestDTO` | `200 OK` |
+| `POST` | `/api/ai/suggest-category` | AI Category Suggestion | `AiCategoryRequestDTO` | `200 OK` |
+| `POST` | `/api/ai/validate` | AI Content Validation | `AiValidationRequestDTO` | `200 OK` |
 
 ### Unified Success Response Structure (`ApiResponse<T>`)
 ```json
@@ -319,7 +348,7 @@ The project utilizes **SLF4J** for structured logging:
 
 ## 🧪 Testing Suite (JUnit 5 & Mockito)
 Unit tests validate the Service layer workflow. Mocks isolate repository behavior so tests run instantly without needing database connections.
-- **Service methods tested**: Create Item, Get Item, Update Item, Delete Item, Update Status, and Exception Handling.
+- **Service methods tested**: Create Item, Get Item, Update Item, Delete Item, Update Status, AI Description Generation, AI Category Suggestion, AI Content Validation, and Exception Handling.
 
 ---
 
@@ -329,11 +358,13 @@ Unit tests validate the Service layer workflow. Mocks isolate repository behavio
 - Java 17+ Installed
 - MySQL Server running on `localhost:3306`
 - Node.js & npm installed
+- Google Gemini API Key configured in your environment (`GEMINI_API_KEY`)
 
 ### 2. Backend Setup
 ```bash
 cd backend
 # Database credentials configuration in backend/src/main/resources/application.properties
+# Run application (Make sure GEMINI_API_KEY environment variable is set)
 mvn clean spring-boot:run
 ```
 
@@ -370,7 +401,9 @@ Through this project, I gained practical experience in:
 - Designing and implementing **Layered Architecture**.
 - Building **RESTful APIs** using **Spring Boot**.
 - Working with **Spring Data JPA (Hibernate)**.
-- Implementing input validation and centralized exception handling.
+- Consuming external REST APIs securely using **RestTemplate** and environment variables.
+- Prompt Engineering fundamentals and structured JSON output mapping with **Generative AI** models.
+- Designing AI-assisted user interface validation mechanisms.
 - Writing unit tests using **JUnit 5** and **Mockito**.
 - Building responsive React SPAs using **Tailwind CSS**.
 - Managing code using **Git & GitHub**.
@@ -383,6 +416,8 @@ This project demonstrates practical knowledge of:
 - **Spring Boot & Spring MVC** RESTful APIs
 - **JPA & Hibernate** DB operations
 - **React** components, Hooks, and client-side routing
+- **External REST API Integration** (Google Gemini API API)
+- **Prompt Engineering & AI Validation**
 - **Logging** & **Testing** best practices
 
 ---
