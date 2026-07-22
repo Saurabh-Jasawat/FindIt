@@ -137,13 +137,85 @@ User ➔ React Components ➔ Axios ➔ REST API ➔ Controller ➔ Service ➔ 
 - Centralized exception interception (`@RestControllerAdvice`) returning consistent structured error envelopes.
 
 ### 7. Bean Validation
-- Enforces strict input validation on inputs (`@NotBlank`, `@NotNull`, `@Size`, and `@Pattern`).
+- Enforces strict input validation on DTO fields.
+
+---
+
+## 📁 Project Structure
+
+```
+FindIt/
+├── backend/                              # Spring Boot REST API
+│   ├── pom.xml                           # Maven dependencies configuration
+│   └── src/
+│       ├── main/
+│       │   ├── java/
+│       │   │   └── com/
+│       │   │       └── findit/
+│       │   │           ├── FindItApplication.java        # Application Main Entry Point
+│       │   │           ├── config/
+│       │   │           │   └── WebConfig.java            # Centralized CORS Configuration (WebMvcConfigurer)
+│       │   │           ├── controller/
+│       │   │           │   └── ItemController.java       # REST Controller
+│       │   │           ├── dto/
+│       │   │           │   ├── ApiResponse.java          # Unified REST Envelope <T>
+│       │   │           │   ├── ItemRequestDTO.java       # Bean Validation DTO
+│       │   │           │   └── ItemResponseDTO.java      # Output JSON Payload
+│       │   │           ├── entity/
+│       │   │           │   ├── Category.java             # Enum: MOBILE, WALLET, KEYS, DOCUMENT, ID_CARD, BAG, ELECTRONICS, OTHER
+│       │   │           │   ├── Item.java                 # JPA Entity
+│       │   │           │   ├── ItemStatus.java           # Enum: ACTIVE, RETURNED
+│       │   │           │   └── ItemType.java             # Enum: LOST, FOUND
+│       │   │           ├── exception/
+│       │   │           │   ├── ErrorDetails.java
+│       │   │           │   ├── GlobalExceptionHandler.java# @RestControllerAdvice
+│       │   │           │   └── ResourceNotFoundException.java
+│       │   │           ├── mapper/
+│       │   │           │   └── ItemMapper.java           # Entity ↔ DTO Converter Helper
+│       │   │           ├── repository/
+│       │   │           │   └── ItemRepository.java       # JpaRepository<Item, Long>
+│       │   │           └── service/
+│       │   │               ├── ItemService.java          # Service Interface
+│       │   │               └── impl/
+│       │   │                   └── ItemServiceImpl.java  # @Service & @Transactional Implementation
+│       │   └── resources/
+│       │       └── application.properties                # MySQL connection properties
+│       └── test/
+│           └── java/
+│               └── com/
+│                   └── findit/
+│                       └── service/
+│                           └── ItemServiceTest.java      # JUnit 5 & Mockito service unit tests
+│
+└── frontend/                             # React SPA
+    ├── package.json
+    ├── vite.config.js
+    └── src/
+        ├── api/
+        │   └── itemApi.js                # Axios REST API Client
+        ├── assets/                       # Static media assets
+        ├── components/
+        │   ├── FilterBar.jsx             # Category, Location, Type & Status filter controls
+        │   ├── ItemCard.jsx              # Individual post card
+        │   ├── ItemStatusBadge.jsx       # Color badge
+        │   ├── Navbar.jsx                # Header bar & navigation links
+        │   └── SearchBar.jsx             # Real-time search bar
+        ├── pages/
+        │   ├── HomePage.jsx              # Main Feed page
+        │   ├── ItemDetailPage.jsx        # Single post detail view page
+        │   ├── MyPostsPage.jsx           # User's management page
+        │   └── ReportItemPage.jsx        # Post creation & edit page
+        ├── utils/                        # Utility helpers
+        ├── App.jsx                       # React Router route configuration
+        ├── main.jsx                      # Application bootstrap
+        └── index.css                     # Tailwind CSS directives
+```
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Backend**: Java 17+, Spring Boot 3, Spring MVC, Spring Data JPA, Hibernate ORM, MySQL Connector, Lombok, Bean Validation.
+- **Backend**: Java 17+, Spring Boot 3, Spring MVC, Spring Data JPA (Hibernate), MySQL Connector, Lombok, Bean Validation.
 - **Testing**: JUnit 5, Mockito, AssertJ.
 - **Logging**: SLF4J (with `@Slf4j`).
 - **Frontend**: React.js, Vite, React Router (v6), Axios, Tailwind CSS.
@@ -173,7 +245,19 @@ A single table design in MySQL:
 
 ---
 
+## ✅ Bean Validation
+
+Input payloads are strictly validated on the DTO layer using Jakarta Validation annotations:
+- `@NotBlank`: Enforces that text inputs cannot be empty or null.
+- `@NotNull`: Validates presence of objects like Enums and LocalDate.
+- `@Size(min = 3, max = 100)`: Restricts field lengths (e.g. title lengths).
+- `@Pattern(regexp = "^[0-9]{10}$")`: Ensures phone numbers are exactly 10-digit numbers.
+
+---
+
 ## 📡 REST API Documentation
+
+### Endpoints
 
 | Method | Endpoint | Description | Request Body | Success Code |
 | :--- | :--- | :--- | :--- | :--- |
@@ -183,6 +267,28 @@ A single table design in MySQL:
 | `PUT` | `/api/items/{id}` | Replace post details | `ItemRequestDTO` | `200 OK` |
 | `PATCH` | `/api/items/{id}/status` | Update item status (e.g. Returned) | None (Query parameter) | `200 OK` |
 | `DELETE`| `/api/items/{id}` | Remove post | None | `204 No Content` |
+
+### Unified Success Response Structure (`ApiResponse<T>`)
+```json
+{
+  "success": true,
+  "message": "Item created successfully.",
+  "data": {
+    "id": 1,
+    "title": "Lost Wallet"
+  },
+  "timestamp": "2026-07-22T12:30:15"
+}
+```
+
+### Unified Exception Response Structure (`ErrorDetails`)
+```json
+{
+  "success": false,
+  "message": "Item post not found with id: 99",
+  "timestamp": "2026-07-22T13:20:45"
+}
+```
 
 ---
 
@@ -245,8 +351,8 @@ Open `http://localhost:5173`.
 ## 📚 What I Learned
 Through this project, I gained practical experience in:
 - Designing and implementing **Layered Architecture**.
-- Building robust REST APIs using **Spring Boot**.
-- Working with **Spring Data JPA** and **Hibernate ORM**.
+- Building **RESTful APIs** using **Spring Boot**.
+- Working with **Spring Data JPA (Hibernate)**.
 - Implementing input validation and centralized exception handling.
 - Writing unit tests using **JUnit 5** and **Mockito**.
 - Building responsive React SPAs using **Tailwind CSS**.
@@ -257,7 +363,7 @@ Through this project, I gained practical experience in:
 ## 🎯 Interview Highlights
 This project demonstrates practical knowledge of:
 - Core **Java** & OOP principles
-- **Spring Boot & Spring MVC** REST APIs
+- **Spring Boot & Spring MVC** RESTful APIs
 - **JPA & Hibernate** DB operations
 - **React** components, Hooks, and client-side routing
 - **Logging** & **Testing** best practices
@@ -273,4 +379,4 @@ This project demonstrates practical knowledge of:
 ---
 
 ## 📜 License
-MIT License. Built for education and portfolio demonstrations.
+This project is licensed under the MIT License - built for educational purposes and portfolio demonstration.
