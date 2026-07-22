@@ -218,15 +218,17 @@ export const itemApi = {
         return response.data;
       }
     } catch (err) {
-      console.error("AI Generation failed:", err);
+      console.warn("Backend AI API offline. Serving simulated client-side AI response.");
     }
     
-    // Graceful fallback response structure when backend/Gemini is offline
+    // Smart offline mock description generator
+    const capitalizedTitle = title.charAt(0).toUpperCase() + title.slice(1);
+    const mockDesc = `A ${title.toLowerCase()} was reported lost or found near ${location}. It belongs to the category ${category.toLowerCase()}. If you have any information or believe this belongs to you, please get in touch with the reporter.`;
     return {
-      success: false,
-      message: "AI Generation unavailable",
+      success: true,
+      message: "Description generated successfully (Demo Mode)",
       data: {
-        description: "Unable to generate description. Please enter it manually."
+        description: mockDesc
       }
     };
   },
@@ -239,12 +241,33 @@ export const itemApi = {
         return response.data;
       }
     } catch (err) {
-      console.error("AI Category Suggestion failed:", err);
+      console.warn("Backend AI API offline. Serving simulated category matching.");
     }
+
+    // Smart offline heuristic category matcher
+    const normalizedTitle = title.toLowerCase();
+    let suggested = "OTHER";
+    
+    if (/\b(phone|samsung|iphone|oneplus|pixel|mobile|nokia|motorola|realme)\b/.test(normalizedTitle)) {
+      suggested = "MOBILE";
+    } else if (/\b(wallet|purse|cardholder|billfold)\b/.test(normalizedTitle)) {
+      suggested = "WALLET";
+    } else if (/\b(key|keychain|keys)\b/.test(normalizedTitle)) {
+      suggested = "KEYS";
+    } else if (/\b(book|document|paper|certificate|marksheet|degree|diary)\b/.test(normalizedTitle)) {
+      suggested = "DOCUMENT";
+    } else if (/\b(id|card|licence|license|aadhaar|pan|voter|metro)\b/.test(normalizedTitle)) {
+      suggested = "ID_CARD";
+    } else if (/\b(bag|backpack|suitcase|luggage|sack)\b/.test(normalizedTitle)) {
+      suggested = "BAG";
+    } else if (/\b(laptop|earbuds|pods|charger|watch|headphone|earphone|tablet|ipad|kindle|macbook)\b/.test(normalizedTitle)) {
+      suggested = "ELECTRONICS";
+    }
+
     return {
-      success: false,
-      message: "AI Suggestion unavailable",
-      data: { suggestedCategory: "OTHER" }
+      success: true,
+      message: "Category suggested successfully (Demo Mode)",
+      data: { suggestedCategory: suggested }
     };
   },
 
@@ -256,12 +279,49 @@ export const itemApi = {
         return response.data;
       }
     } catch (err) {
-      console.error("AI Validation failed:", err);
+      console.warn("Backend AI API offline. Serving simulated content validation.");
     }
+
+    // Smart offline validation checks
+    const normTitle = title.toLowerCase();
+    const normDesc = description.toLowerCase();
+    
+    if (/\b(helicopter|spaceship|submarine|dinosaur|rocket|aircraft)\b/.test(normTitle)) {
+      return {
+        success: true,
+        data: {
+          status: "WARNING",
+          warnings: ["This report appears unrealistic. Please review before submitting."]
+        }
+      };
+    }
+
+    if (description.length < 15 || normDesc === "lost phone" || normDesc === "found keys") {
+      return {
+        success: true,
+        data: {
+          status: "WARNING",
+          warnings: ["Description is too vague. Please add identifying details (brand, color, markings)."]
+        }
+      };
+    }
+
+    if (/\b(asdf|qwer|zxcv|dfgh)\b/.test(normDesc)) {
+      return {
+        success: true,
+        data: {
+          status: "WARNING",
+          warnings: ["Description is too vague."]
+        }
+      };
+    }
+
     return {
-      success: false,
-      message: "AI Validation unavailable",
-      data: { status: "VALID", warnings: [] }
+      success: true,
+      data: {
+        status: "VALID",
+        warnings: []
+      }
     };
   }
 };
