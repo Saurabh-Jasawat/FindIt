@@ -19,13 +19,6 @@ import java.util.Set;
 
 /**
  * Service Implementation class consuming Google's Gemini REST API.
- * 
- * Explanation for Interviews:
- * Uses RestTemplate to consume Google's Gemini 1.5 API model.
- * Demonstrates prompt engineering for three distinct assistant tasks:
- * 1. Narrative generation (Description Generator)
- * 2. Classification & constraint matching (Category Suggestion)
- * 3. Structured quality assessment (Content Validation)
  */
 @Service
 @RequiredArgsConstructor
@@ -41,7 +34,6 @@ public class AiServiceImpl implements AiService {
     @Value("${gemini.api.url}")
     private String apiUrlPrefix;
 
-    // Set of allowed categories for verification
     private static final Set<String> ALLOWED_CATEGORIES = Set.of(
             "MOBILE", "WALLET", "KEYS", "DOCUMENT", "ID_CARD", "BAG", "ELECTRONICS", "OTHER"
     );
@@ -82,18 +74,29 @@ public class AiServiceImpl implements AiService {
 
         try {
             String promptText = String.format(
-                "Suggest a category for an item titled '%s'. " +
-                "You must respond with exactly one word from this list: [MOBILE, WALLET, KEYS, DOCUMENT, ID_CARD, BAG, ELECTRONICS, OTHER]. " +
-                "Do not include any formatting, markdown, punctuation, or other text.",
+                "Categorize a Lost & Found item with title: '%s'.\n" +
+                "You must match it to exactly one of the following category enums:\n" +
+                "- MOBILE (For smartphones, iPhones, Samsung phones, mobile devices)\n" +
+                "- WALLET (For wallets, purses, pocketbooks)\n" +
+                "- KEYS (For keys, keychains)\n" +
+                "- DOCUMENT (For books, certificates, papers, files)\n" +
+                "- ID_CARD (For Aadhaar cards, PAN cards, College ID cards, driving licenses)\n" +
+                "- BAG (For backpacks, bags, suitcases)\n" +
+                "- ELECTRONICS (For laptops, chargers, headphones, earbuds, smartwatches, power banks)\n" +
+                "- OTHER (For anything else)\n\n" +
+                "Respond with only the matching uppercase word (e.g. MOBILE or ELECTRONICS). Do not include any formatting, markdown, quotes, or explanatory text.",
                 request.getTitle()
             );
 
             String result = callGemini(promptText);
             if (result != null) {
-                String cleanCategory = result.trim().toUpperCase();
-                if (ALLOWED_CATEGORIES.contains(cleanCategory)) {
-                    log.info("AI suggested category: '{}'", cleanCategory);
-                    return new AiCategoryResponseDTO(cleanCategory);
+                // Robust parsing: Clean all non-alphabetic chars to extract clean category enums
+                String cleanText = result.toUpperCase().replaceAll("[^A-Z_]", " ").trim();
+                for (String word : cleanText.split("\\s+")) {
+                    if (ALLOWED_CATEGORIES.contains(word)) {
+                        log.info("AI suggested category: '{}' for title: '{}'", word, request.getTitle());
+                        return new AiCategoryResponseDTO(word);
+                    }
                 }
             }
             log.warn("Gemini returned invalid category suggestion: '{}'. Defaulting to OTHER.", result);
@@ -108,7 +111,6 @@ public class AiServiceImpl implements AiService {
     public AiValidationResponseDTO validateContent(AiValidationRequestDTO request) {
         log.info("Validating content quality for title: '{}'", request.getTitle());
 
-        // Default response when offline or missing key (always pass to never block user submission)
         AiValidationResponseDTO defaultValid = new AiValidationResponseDTO("VALID", new ArrayList<>());
 
         if (isApiKeyMissing()) {
@@ -134,7 +136,6 @@ public class AiServiceImpl implements AiService {
 
             String result = callGemini(promptText);
             if (result != null && !result.isBlank()) {
-                // Strip markdown wrappers if any
                 String cleanJson = result.replaceAll("```json", "").replaceAll("```", "").trim();
                 AiValidationResponseDTO mappedResponse = objectMapper.readValue(cleanJson, AiValidationResponseDTO.class);
                 log.info("Validation complete. Status: {}, Warning Count: {}", mappedResponse.getStatus(), mappedResponse.getWarnings().size());
@@ -147,9 +148,6 @@ public class AiServiceImpl implements AiService {
         return defaultValid;
     }
 
-    /**
-     * Helper method to verify if the API key is configured.
-     */
     private boolean isApiKeyMissing() {
         if (apiKey == null || apiKey.trim().isEmpty()) {
             log.warn("Gemini API Key is missing. Feature deactivated gracefully.");
@@ -158,9 +156,6 @@ public class AiServiceImpl implements AiService {
         return false;
     }
 
-    /**
-     * Shared helper to make the REST call to Google's Gemini API.
-     */
     private String callGemini(String prompt) {
         String fullUrl = apiUrlPrefix + apiKey;
 
