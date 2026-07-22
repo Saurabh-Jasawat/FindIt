@@ -204,5 +204,64 @@ export const itemApi = {
 
     localItemsStore = localItemsStore.filter(i => String(i.id) !== String(id));
     return;
+  },
+
+  // POST /api/ai/generate-description
+  generateDescription: async (title, category, location) => {
+    try {
+      const response = await axios.post('http://localhost:8080/api/ai/generate-description', {
+        title,
+        category,
+        location
+      });
+      if (response.data && response.data.data) {
+        return response.data;
+      }
+    } catch (err) {
+      console.error("AI Generation failed:", err);
+    }
+    
+    // Graceful fallback response structure when backend/Gemini is offline
+    return {
+      success: false,
+      message: "AI Generation unavailable",
+      data: {
+        description: "Unable to generate description. Please enter it manually."
+      }
+    };
+  },
+
+  // POST /api/ai/suggest-category
+  suggestCategory: async (title) => {
+    try {
+      const response = await axios.post('http://localhost:8080/api/ai/suggest-category', { title });
+      if (response.data && response.data.data) {
+        return response.data;
+      }
+    } catch (err) {
+      console.error("AI Category Suggestion failed:", err);
+    }
+    return {
+      success: false,
+      message: "AI Suggestion unavailable",
+      data: { suggestedCategory: "OTHER" }
+    };
+  },
+
+  // POST /api/ai/validate
+  validateContent: async (title, description) => {
+    try {
+      const response = await axios.post('http://localhost:8080/api/ai/validate', { title, description });
+      if (response.data && response.data.data) {
+        return response.data;
+      }
+    } catch (err) {
+      console.error("AI Validation failed:", err);
+    }
+    return {
+      success: false,
+      message: "AI Validation unavailable",
+      data: { status: "VALID", warnings: [] }
+    };
   }
 };

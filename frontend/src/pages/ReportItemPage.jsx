@@ -48,6 +48,71 @@ export default function ReportItemPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const [aiLoading, setAiLoading] = useState(false);
+  const [suggestedCategory, setSuggestedCategory] = useState(null);
+  const [categoryLoading, setCategoryLoading] = useState(false);
+  const [validationResult, setValidationResult] = useState(null);
+  const [validationLoading, setValidationLoading] = useState(false);
+
+  const handleGenerateDescription = async () => {
+    if (!formData.title || !formData.category || !formData.location) {
+      setError("Please fill in Title, Category, and Location first to generate an AI description.");
+      return;
+    }
+    setAiLoading(true);
+    setError(null);
+    try {
+      const response = await itemApi.generateDescription(formData.title, formData.category, formData.location);
+      if (response && response.data && response.data.description) {
+        setFormData((prev) => ({ ...prev, description: response.data.description }));
+      }
+    } catch (err) {
+      setError("Unable to generate description. Please enter it manually.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleSuggestCategory = async () => {
+    if (!formData.title) {
+      setError("Please enter a Title first to suggest a category.");
+      return;
+    }
+    setCategoryLoading(true);
+    setSuggestedCategory(null);
+    setError(null);
+    try {
+      const response = await itemApi.suggestCategory(formData.title);
+      if (response && response.data && response.data.suggestedCategory) {
+        setSuggestedCategory(response.data.suggestedCategory);
+      }
+    } catch (err) {
+      console.error("Category suggestion error:", err);
+    } finally {
+      setCategoryLoading(false);
+    }
+  };
+
+  const handleValidateContent = async () => {
+    if (!formData.title || !formData.description) {
+      setError("Please fill in Title and Description first to validate content.");
+      return;
+    }
+    setValidationLoading(true);
+    setValidationResult(null);
+    setError(null);
+    try {
+      const response = await itemApi.validateContent(formData.title, formData.description);
+      if (response && response.data) {
+        setValidationResult(response.data);
+      }
+    } catch (err) {
+      console.error("Validation error:", err);
+    } finally {
+      setValidationLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -148,9 +213,19 @@ export default function ReportItemPage() {
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-              Item Title *
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Item Title *
+              </label>
+              <button
+                type="button"
+                onClick={handleSuggestCategory}
+                disabled={categoryLoading}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-sky-50 hover:bg-sky-100 text-sky-700 text-[11px] font-bold transition-all disabled:opacity-50"
+              >
+                {categoryLoading ? "Suggesting..." : "✨ Suggest Category (AI)"}
+              </button>
+            </div>
             <input
               type="text"
               name="title"
@@ -186,6 +261,21 @@ export default function ReportItemPage() {
                 <option value="ELECTRONICS">💻 Electronics</option>
                 <option value="OTHER">📦 Other</option>
               </select>
+              {suggestedCategory && (
+                <div className="mt-2 p-2.5 bg-indigo-50 border border-indigo-150 rounded-xl text-xs font-bold text-indigo-700 flex items-center justify-between">
+                  <span>💡 AI Suggestion: {suggestedCategory}</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormData(prev => ({ ...prev, category: suggestedCategory }));
+                      setSuggestedCategory(null);
+                    }}
+                    className="px-2 py-0.5 bg-indigo-600 text-white rounded text-[10px] uppercase font-bold hover:bg-indigo-700"
+                  >
+                    Apply
+                  </button>
+                </div>
+              )}
             </div>
 
             <div>
@@ -238,9 +328,36 @@ export default function ReportItemPage() {
 
           {/* Description */}
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
-              Full Description *
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+                Full Description *
+              </label>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleValidateContent}
+                  disabled={validationLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-700 text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  {validationLoading ? "Validating..." : "🛡 Validate (AI)"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleGenerateDescription}
+                  disabled={aiLoading}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-bold transition-all disabled:opacity-50"
+                >
+                  {aiLoading ? (
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-3 h-3 border-2 border-sky-600 border-t-transparent rounded-full animate-spin"></span>
+                      Generating...
+                    </span>
+                  ) : (
+                    <span>✨ Generate (AI)</span>
+                  )}
+                </button>
+              </div>
+            </div>
             <textarea
               name="description"
               rows={4}
@@ -251,6 +368,31 @@ export default function ReportItemPage() {
               maxLength={1000}
               className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
             ></textarea>
+
+            {/* Validation Feedback */}
+            {validationResult && (
+              <div className={`mt-3 p-3.5 rounded-2xl border text-xs font-medium space-y-1.5 ${
+                validationResult.status === 'VALID'
+                  ? 'bg-emerald-50 border-emerald-250 text-emerald-800'
+                  : 'bg-rose-50 border-rose-250 text-rose-850'
+              }`}>
+                <div className="font-bold flex items-center gap-1.5">
+                  {validationResult.status === 'VALID' ? '✅ AI Content Validation Passed' : '⚠️ AI Content Validation warning'}
+                </div>
+                {validationResult.status === 'VALID' ? (
+                  <p>Description looks realistic and descriptive. Ready to publish!</p>
+                ) : (
+                  <ul className="list-disc list-inside space-y-1">
+                    {validationResult.warnings.map((w, idx) => (
+                      <li key={idx}>{w}</li>
+                    ))}
+                  </ul>
+                )}
+                <p className="text-[10px] opacity-75 font-semibold mt-1">
+                  * AI-generated suggestion. Please review before submitting.
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Contact Person Details */}
