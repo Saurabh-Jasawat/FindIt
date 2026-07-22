@@ -213,13 +213,30 @@ FindIt/
 
 ---
 
-## 🛠 Tech Stack
+## 🛠 Tech Stack & Versioning
 
-- **Backend**: Java 17+, Spring Boot 3, Spring MVC, Spring Data JPA (Hibernate), MySQL Connector, Lombok, Bean Validation.
-- **Testing**: JUnit 5, Mockito, AssertJ.
-- **Logging**: SLF4J (with `@Slf4j`).
-- **Frontend**: React.js, Vite, React Router (v6), Axios, Tailwind CSS.
-- **Build Tool**: Maven.
+- **Project Status**: `Completed`
+- **Application Version**: `v1.0`
+
+### Backend Technologies
+- **Java Platform**: Version `17`
+- **Spring Boot Framework**: Version `3.2.3`
+- **JPA & ORM Specification**: Spring Data JPA (with Hibernate `6.4.4`)
+- **Database System**: MySQL (Server Version `8.0` / `8.4` compatible)
+- **Dependency Management**: Maven (Build Compiler Version `3.9.x`)
+- **Logging Auditing**: SLF4J (using Lombok `@Slf4j` facade generator)
+
+### Testing Stack
+- **Testing Framework**: JUnit `5.10.2`
+- **Mocking Library**: Mockito `5.7.0`
+- **Fluent Assertions**: AssertJ `3.24.2`
+
+### Frontend Technologies
+- **UI Library**: React.js Version `18.2.0`
+- **Build Tool**: Vite Version `5.1.6`
+- **Client Routing**: React Router DOM Version `6.22.3`
+- **HTTP Client**: Axios Version `1.6.8`
+- **Utility Styling**: Tailwind CSS Version `3.4.1`
 
 ---
 
